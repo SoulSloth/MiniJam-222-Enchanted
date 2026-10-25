@@ -5,16 +5,20 @@
 #include "resource_dir.h"	// utility header for SearchAndSetResourceDir
 
 #define MAX_MOB_COUNT 100
-#define SPAWN_RADIUS 200 
+#define SPAWN_RADIUS 200
+
+struct Mob{
+  int id;
+  int posX;
+  int posY;
+  Vector2 speed;
+} typedef Mob;
 
 struct GameState{
-  // Load a texture from the resources directory
   Texture2D wabbit;
   char *lastKeyPressed;
   Vector2 lastMousePos;
-  int mobIds[MAX_MOB_COUNT];
-  int mobIdPos[MAX_MOB_COUNT][2];
-  int mobPos[MAX_MOB_COUNT][2];
+  Mob mobs[MAX_MOB_COUNT];
   int mobCount;
   int lastMobId;
 };
@@ -24,67 +28,35 @@ void createMob(struct GameState *state, int posX, int posY){
     printf("Tried to exceed max mob count: %d\n", state->mobCount);
     exit(1);
   }
-  int mobId = state->lastMobId + 1;
-  for(int i = 0; i < MAX_MOB_COUNT; i++){
-    if(state->mobIds[i] == -1){
-      state->mobIds[i] = mobId;
-      break;
-    }
-  }
-  for(int i = 0; i < MAX_MOB_COUNT; i++){
-    if(state->mobIdPos[i][0] == -1){
-      for(int d = 0; d < MAX_MOB_COUNT; d++){
-	if(state->mobPos[d][0] == -1){
-	  state->mobPos[d][0] = posX;
-	  state->mobPos[d][1] = posY;
-	  state->mobIdPos[i][0] = mobId;
-	  state->mobIdPos[i][1] = d;
-	  break;
-	}
-      }
-      break;
-    }
-  }
   state->mobCount++;
-  state->lastMobId = mobId;
+  state->lastMobId++;
+  for(int i = 0; i < MAX_MOB_COUNT; i++){
+    if(state->mobs[i].id == -1){
+      Mob newMob = {state->lastMobId, posX, posY, {10,10}};
+      state->mobs[i] = newMob;
+      break;
+    }
+  }
 }
 
 void deleteMob(struct GameState *state, int mobId){
-  int mobPosIndex = -1;
-  for(int i = 0; i < MAX_MOB_COUNT; i++){
-    if(state->mobIdPos[i][0] == mobId){
-      mobPosIndex = state->mobIdPos[i][1];
-      state->mobIdPos[i][0] = -1;
-      state->mobIdPos[i][1] = -1;
-      break;
-    }
-  }
-  if(mobPosIndex == -1){
-    printf("Failed to find mob position mapping.\n");
-    exit(1);
-  }
-
-  state->mobPos[mobPosIndex][0] = -1;
-  state->mobPos[mobPosIndex][1] = -1;
-  for(int i = 0; i < MAX_MOB_COUNT; i++){
-    if(state->mobIds[i] == mobId){
-      state->mobIds[i] = -1;
-      break;
-    }
-  }
 }
 
-void Mobs(struct GameState *state){
-  
+void mobs(struct GameState *state){
+  for(int mobIndex = 0; mobIndex < MAX_MOB_COUNT; mobIndex++){
+    if(state->mobs[mobIndex].id == -1){
+      continue;
+    }
+
+    state->mobs[mobIndex].posX += state->mobs[mobIndex].speed.x;
+    state->mobs[mobIndex].posY += state->mobs[mobIndex].speed.y;
+  }
 }
 
 void init(struct GameState *state){
+  Mob nilStruct = {-1, 0, 0, {0,0}};
   for(int i = 0; i < MAX_MOB_COUNT; i++){
-    state->mobIds[i] = -1;
-    state->mobIdPos[i][0] = -1;
-    state->mobIdPos[i][1] = -1;
-    state->mobPos[i][0] = -1;
-    state->mobPos[i][1] = -1;
+    state->mobs[i] = nilStruct; 
   }
   state->lastMobId = -1;
   state->mobCount = 0;
@@ -130,12 +102,13 @@ void Draw(struct GameState state){
 	      GetScreenHeight()/2 - state.wabbit.height/2,
 	      WHITE);
   for(int i = 0; i < MAX_MOB_COUNT; i++){
-    if(state.mobPos[i][0] != -1){
-      DrawTexture(state.wabbit,
-		  state.mobPos[i][0] - state.wabbit.width/2,
-		  state.mobPos[i][1] - state.wabbit.height/2,
-		  WHITE);
+    if(state.mobs[i].id == -1){
+      continue;
     }
+    DrawTexture(state.wabbit,
+		state.mobs[i].posX - state.wabbit.width/2,
+		state.mobs[i].posY - state.wabbit.height/2,
+		WHITE);
   }
   EndDrawing();
 }
@@ -152,6 +125,7 @@ void startGame(struct GameState *state){
   while (!WindowShouldClose())
     {
       Input(state);
+      mobs(state);
       Draw(*state);
   }
   UnloadTexture(state->wabbit);
