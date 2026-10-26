@@ -40,6 +40,10 @@ struct GameState{
   Texture2D particle;
   Texture2D tile;
   Texture2D explosion;
+  Sound CatMeowSFX;
+  Sound MagicSFX;
+  Sound ExpSFX;
+  Sound HurtSFX;
   char *lastKeyPressed;
   Vector2 lastMousePos;
   Mob mobs[MAX_MOB_COUNT];
@@ -65,6 +69,7 @@ void createExp(struct GameState *state, int posX, int posY){
     if(state->exp[i].id == -1){
       Explosion newExp = { state->lastExpId, posX, posY, EXP_LIFETIME};
       state->exp[i] = newExp;
+      PlaySound(state->ExpSFX);
       break;
     }
   }
@@ -100,7 +105,6 @@ void deleteMob(struct GameState *state, int mobId){
   for(int i = 0; i < MAX_MOB_COUNT; i++){
     if(state->mobs[i].id == mobId){
       state->mobs[i].id = -1;
-      printf("deleted %d\n", state->mobs[i].id);
       state->mobCount--;
       break;
     }
@@ -111,6 +115,7 @@ void enchantMob(struct GameState *state, int mobId){
   for(int i = 0; i < MAX_MOB_COUNT; i++){
     if(state->mobs[i].id == mobId){
       state->mobs[i].enchanted = true;
+      PlaySound(state->MagicSFX);
       break;
     }
   }
@@ -167,8 +172,10 @@ void mobs(struct GameState *state){
     if(Vector2Length(Vector2Subtract(center,mobPos)) < 50.0 ){
       deleteMob(state, state->mobs[mobIndex].id);
       state->playerHealth -= 1;
+      PlaySound(state->HurtSFX);
       if(state->playerHealth == 0){
 	state->gameOver = true;
+	PlaySound(state->CatMeowSFX);
       }
     }
 
@@ -189,9 +196,7 @@ void mobs(struct GameState *state){
 
 void player(struct GameState *state){
   if(state->spellCoolDownTimer > 0.0){
-    printf("FOOBAR: %0.2f\n", state->spellCoolDownTimer);
     state->spellCoolDownTimer = fmax(0.0, state->spellCoolDownTimer - GetFrameTime());
-    printf("FOOBARCARRY: %0.2f\n", state->spellCoolDownTimer);
   }
   else{
     state->spellCoolDownTimer = 0.0;
@@ -362,7 +367,6 @@ void Draw(struct GameState state){
 		  WHITE);
   }
   float playerHealthRatio = state.playerHealth/PLAYER_MAX_HEALTH;
-  printf("%0.2f\n", state.spellCoolDownTimer);
   float spellCoolDownRatio = state.spellCoolDownTimer/SPELL_COOLDOWN;
   DrawRectangle(50, 720-75, (1280-100) * playerHealthRatio , 25, RED);
   DrawRectangle(50, 720-100, (1280-100) * spellCoolDownRatio , 25, PURPLE);
@@ -386,6 +390,7 @@ void startGame(struct GameState *state){
   SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
   // Create the window and OpenGL context
   InitWindow(1280, 720, "Hello Raylib");
+  InitAudioDevice(); 
   // Utility function from resource_dir.h to find the resources folder and set it as the current working directory so we can load from it
   SearchAndSetResourceDir("resources");
   // Exit if user closes window or presses escape.
@@ -395,6 +400,10 @@ void startGame(struct GameState *state){
   state->particle = LoadTexture("particle.png");
   state->tile = LoadTexture("Tile.png");
   state->explosion = LoadTexture("Explosion.png");
+  state->CatMeowSFX = LoadSound("CatMeow.ogg");
+  state->MagicSFX = LoadSound("Misc Popup Magic 006.wav");
+  state->ExpSFX = LoadSound("Pot Explosion.wav");
+  state->HurtSFX = LoadSound("Vein Spurt C.wav");
   state->lastKeyPressed = "";
   while (!WindowShouldClose())
     {
@@ -407,6 +416,14 @@ void startGame(struct GameState *state){
       Draw(*state);
   }
   UnloadTexture(state->wabbit);
+  UnloadTexture(state->character);
+  UnloadTexture(state->cat);
+  UnloadTexture(state->particle);
+  UnloadTexture(state->explosion);
+  UnloadSound(state->CatMeowSFX);
+  UnloadSound(state->MagicSFX);
+  UnloadSound(state->ExpSFX);
+  UnloadSound(state->HurtSFX);
   CloseWindow();
 }
 
