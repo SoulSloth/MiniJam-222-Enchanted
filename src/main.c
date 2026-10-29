@@ -15,18 +15,14 @@
 
 struct Mob{
   int id;
-  int posX;
-  int posY;
   Vector2 speed;
-  bool hovered;
-  bool enchanted;
-  float deathTimer;
+  bool hovered, enchanted;
+  float deathTimer,x,y;
 } typedef Mob;
 
 struct Explosion{
   int id;
-  int posX;
-  int posY;
+  float x, y;
   float timer;
 } typedef Explosion;
 
@@ -94,7 +90,7 @@ void createMob(struct GameState *state, int posX, int posY){
   state->lastMobId++;
   for(int i = 0; i < MAX_MOB_COUNT; i++){
     if(state->mobs[i].id == -1){
-      Mob newMob = {state->lastMobId, posX, posY, {0,0}, false, false, DEATH_TIMER};
+      Mob newMob = {state->lastMobId, {0,0}, false, false, DEATH_TIMER, posX, posY};
       state->mobs[i] = newMob;
       break;
     }
@@ -145,7 +141,7 @@ void mobs(struct GameState *state){
     float angle = randDegree;
     Vector2 rotRadius = Vector2Rotate(radius, angle);
     Vector2 finalPos = Vector2Add(rotRadius, center);
-    createMob(state,(int) finalPos.x, (int) finalPos.y);
+    createMob(state, finalPos.x, finalPos.y);
     state->mobSpawnTimer = MOB_SPAWN_TIMER;
   }
 
@@ -155,8 +151,8 @@ void mobs(struct GameState *state){
     }
     Vector2 center = {GetScreenWidth()/2, GetScreenHeight()/2};
     Vector2 mobPos = {
-      state->mobs[mobIndex].posX,
-      state->mobs[mobIndex].posY};
+      state->mobs[mobIndex].x,
+      state->mobs[mobIndex].y};
     Vector2 toCenter = Vector2Subtract(center, mobPos);
     float toCenterL = Vector2Length(toCenter);
     Vector2 toCenterUnit = {toCenter.x/toCenterL, toCenter.y/toCenterL};
@@ -166,9 +162,9 @@ void mobs(struct GameState *state){
     //  exit(1);
     //}
 
-    // Check if mob can damage player
-    state->mobs[mobIndex].posX += toCenterUnit.x*3;
-    state->mobs[mobIndex].posY += toCenterUnit.y*3;
+    state->mobs[mobIndex].x += toCenterUnit.x*3;
+    state->mobs[mobIndex].y += toCenterUnit.y*3;
+    //Check if mob can damage player
     if(Vector2Length(Vector2Subtract(center,mobPos)) < 50.0 ){
       deleteMob(state, state->mobs[mobIndex].id);
       state->playerHealth -= 1;
@@ -187,7 +183,7 @@ void mobs(struct GameState *state){
 	if(state->catsKilled == 25){
 	  state->gameWon = true;
 	}
-	createExp(state,state->mobs[mobIndex].posX, state->mobs[mobIndex].posY);
+	createExp(state,state->mobs[mobIndex].x, state->mobs[mobIndex].y);
 	deleteMob(state,state->mobs[mobIndex].id);
       }
     }
@@ -208,7 +204,7 @@ void init(struct GameState *state){
   state->gameOver = false;
   state->paused = true;
   state->catsKilled = 0;
-  Mob nilStruct = {-1, 0, 0, {0,0}};
+  Mob nilStruct = {-1};
   for(int i = 0; i < MAX_MOB_COUNT; i++){
     state->mobs[i] = nilStruct; 
   }
@@ -242,8 +238,8 @@ void Input(struct GameState *state){
     if(state->mobs[i].id == -1){
       continue;
     }
-    int catTopLeftX = state->mobs[i].posX - state->cat.width/8;
-    int catTopLeftY = state->mobs[i].posY - state->cat.height/8;
+    int catTopLeftX = round(state->mobs[i].x) - state->cat.width/8;
+    int catTopLeftY = round(state->mobs[i].y) - state->cat.height/8;
     if(mousePosX > catTopLeftX && mousePosX < catTopLeftX + state->cat.width/4 &&
        mousePosY > catTopLeftY && mousePosY < catTopLeftY + state->cat.height/4){
       state->mobs[i].hovered = true;
@@ -268,7 +264,6 @@ void Input(struct GameState *state){
 
 void drawPauseScreen(struct GameState state){
   DrawRectangle(50,50, 1280-100, 720-100, BLUE);
-  //    void DrawText(const char *text, int posX, int posY, int fontSize, Color color);
   char introText[] = "OF COURSE IT WOULD COME TO THIS\nThose stupid felines couldn't respect the treaty.\nCouldn't leave our dwindling nests well enough alone,\nCouldn't hold back their ravonous urges!\nWell you know what? We've had enough.\nHere's an echantment that makes cats explode.\nTime to cut down their numbers.";
   DrawText(introText, 100, 100, 32, BLACK);   
   DrawText(introText, 102, 102, 32, WHITE);
@@ -280,7 +275,6 @@ void drawPauseScreen(struct GameState state){
 
 void drawGameOverScreen(struct GameState state){
   DrawRectangle(50,50, 1280-100, 720-100, RED);
-  //    void DrawText(const char *text, int posX, int posY, int fontSize, Color color);
   char introText[] = "Congrats, you've failed, we're all doomed.\nThe nests are empty and soon, so will the sky.";
   DrawText(introText, 100, 100, 32, BLACK);   
   DrawText(introText, 102, 102, 32, WHITE);
@@ -292,7 +286,6 @@ void drawGameOverScreen(struct GameState state){
 
 void drawGameWonScreen(struct GameState state){
   DrawRectangle(50,50, 1280-100, 720-100, DARKBLUE);
-  //    void DrawText(const char *text, int posX, int posY, int fontSize, Color color);
   char introText[] = "They'll call you a monster, but you did what needed to be done.";
   DrawText(introText, 100, 100, 32, BLACK);   
   DrawText(introText, 102, 102, 32, WHITE);
@@ -330,8 +323,8 @@ void Draw(struct GameState state){
       continue;
     }
     Vector2 catPos = {
-		state.mobs[i].posX - state.cat.width/8,
-		state.mobs[i].posY - state.cat.height/8,
+		state.mobs[i].x - state.cat.width/8,
+		state.mobs[i].y - state.cat.height/8,
     };
     if(state.mobs[i].hovered){
       DrawTextureEx(state.cat,
@@ -353,8 +346,8 @@ void Draw(struct GameState state){
       continue;
     }
     Vector2 expPos = {
-      state.exp[i].posX,
-      state.exp[i].posY
+      state.exp[i].x,
+      state.exp[i].y
     };
     Vector2 expCorrect = {
       state.explosion.width/8,
